@@ -4,11 +4,25 @@ from fastapi import HTTPException , FastAPI , UploadFile , File
 from FaceModel.utils import save_upload_file, verify_faces, recognize_face, get_embedding, UPLOAD_FOLDER , MODEL_NAME
 from Chatbot.voice_auth import authenticate_user
 from Chatbot.audio_processing import extract_embedding , convert_to_wav
+from Chatbot.text_to_speech import generate_tts
+from pydantic import BaseModel
 import os
 
 app = FastAPI()
 
 PORT = int(os.getenv("PORT", 8080))  # Default to 8080 for Render
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = "en-US-JennyNeural"
+
+@app.post("/generate-tts/")
+async def generate_tts_api(request: TTSRequest):
+    try:
+        file_name = await generate_tts(request.text, request.voice)
+        return {"message": f"TTS generated and saved to {file_name}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")  # Health check route
 async def root():
@@ -31,39 +45,6 @@ async def embed_route(file: UploadFile = File(...)):
     return get_embedding(img_path)
 
 
-# @app.post("/extract-embedding/")
-# async def extract_embedding_route(file: UploadFile = File(...)):
-#     """
-#     Extracts and returns the speaker embedding from an uploaded audio file.
-#     """
-#     file_path = f"temp_{file.filename}.wav"
-#     with open(file_path, "wb") as buffer:
-#         buffer.write(file.file.read())
-
-#     try:
-#         embedding = extract_embedding(file_path)
-#         os.remove(file_path)  # Clean up temp file
-#         return {"embedding": embedding.tolist()}
-#     except Exception as e:
-#         os.remove(file_path)  # Clean up temp file
-#         raise HTTPException(status_code=500, detail=f"Error extracting embedding: {str(e)}")
-
-# @app.post("/authenticate/")
-# async def verify_user(saved_embedding: list, file: UploadFile = File(...)):
-#     """
-#     Compares uploaded audio embedding with a previously saved embedding.
-#     """
-#     file_path = f"temp_{file.filename}.wav"
-#     with open(file_path, "wb") as buffer:
-#         buffer.write(file.file.read())
-
-#     try:
-#         result = authenticate_user(saved_embedding, file_path)
-#         os.remove(file_path)  # Clean up temp file
-#         return result
-#     except Exception as e:
-#         os.remove(file_path)  # Clean up temp file
-#         raise HTTPException(status_code=500, detail=f"Error during authentication: {str(e)}")
 
 def delete_file_after_delay(file_path, delay=300):
     """Deletes the file after a specified delay (in seconds)."""
@@ -147,6 +128,46 @@ async def verify_user(saved_embedding: list, file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
+
+# -----------------------------------------------------------------------
+# @app.post("/extract-embedding/")
+# async def extract_embedding_route(file: UploadFile = File(...)):
+#     """
+#     Extracts and returns the speaker embedding from an uploaded audio file.
+#     """
+#     file_path = f"temp_{file.filename}.wav"
+#     with open(file_path, "wb") as buffer:
+#         buffer.write(file.file.read())
+
+#     try:
+#         embedding = extract_embedding(file_path)
+#         os.remove(file_path)  # Clean up temp file
+#         return {"embedding": embedding.tolist()}
+#     except Exception as e:
+#         os.remove(file_path)  # Clean up temp file
+#         raise HTTPException(status_code=500, detail=f"Error extracting embedding: {str(e)}")
+
+# @app.post("/authenticate/")
+# async def verify_user(saved_embedding: list, file: UploadFile = File(...)):
+#     """
+#     Compares uploaded audio embedding with a previously saved embedding.
+#     """
+#     file_path = f"temp_{file.filename}.wav"
+#     with open(file_path, "wb") as buffer:
+#         buffer.write(file.file.read())
+
+#     try:
+#         result = authenticate_user(saved_embedding, file_path)
+#         os.remove(file_path)  # Clean up temp file
+#         return result
+#     except Exception as e:
+#         os.remove(file_path)  # Clean up temp file
+#         raise HTTPException(status_code=500, detail=f"Error during authentication: {str(e)}")
+
+# -----------------------------------------------------------------------
+
+
+
 
 
 # from fastapi import FastAPI, UploadFile, File, HTTPException
