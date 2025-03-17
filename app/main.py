@@ -23,17 +23,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import time
 
-from Banking_chatbot.core.config import settings
-from Banking_chatbot.core.data_loader import DataLoader
-from Banking_chatbot.core.chat_manager import ChatManager
-
-from Banking_chatbot.services.transcription import TranscriptionService
-from Banking_chatbot.services.llm import LLMService
-from Banking_chatbot.services.retrieval import RetrievalService
-from Banking_chatbot.services.web_search import WebSearchService
-from Banking_chatbot.services.chat_Service import ChatService
-
-from Banking_chatbot.routers import chat, audio
 
 
 # Create FastAPI app
@@ -46,60 +35,6 @@ class TTSRequest(BaseModel):
     text: str
     voice: str = "en-US-JennyNeural"
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# Startup event to initialize services
-@app.on_event("startup")
-async def startup_event():
-    # Load document data into vector database
-    data_loader = DataLoader()
-    data_loader.load_documents()
-    
-    # Initialize services
-    chat_manager = ChatManager()
-    transcription_service = TranscriptionService()
-    llm_service = LLMService()
-    retrieval_service = RetrievalService(collection=data_loader.get_collection())
-    web_search_service = WebSearchService()
-    
-    # Create chat service with necessary dependencies
-    chat_service = ChatService(
-        retrieval_service=retrieval_service,
-        web_search_service=web_search_service,
-        llm_service=llm_service,
-        chat_manager=chat_manager
-    )
-    
-    # Store services in app state for dependency injection
-    app.state.chat_manager = chat_manager
-    app.state.transcription_service = transcription_service
-    app.state.llm_service = llm_service
-    app.state.retrieval_service = retrieval_service
-    app.state.web_search_service = web_search_service
-    app.state.chat_service = chat_service
-
-
-# Middleware for request timing
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    return response
-
-
-# Include routers
-app.include_router(chat.router)
-app.include_router(audio.router)
 
 
 @app.post("/generate-tts/")
