@@ -102,16 +102,23 @@ async def process_query(request: QueryRequest):
 @app.post("/voice", response_model=TranscriptionResponse)
 async def handle_voice(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    audio_url: str,
     session_id: Optional[str] = Form(None)
 ):
-    """Process voice input and return transcribed text along with chatbot response."""
+    """Process voice input from a URL and return transcribed text along with chatbot response."""
     chatbot, session_id = get_chatbot(session_id)
 
-    # Save uploaded file to temporary location
+    # Download the audio file from the URL
+    try:
+        response = requests.get(audio_url)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Failed to download audio file: {str(e)}")
+
+    # Save the downloaded file to a temporary location
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
     try:
-        temp_file.write(await file.read())
+        temp_file.write(response.content)
         temp_file.close()
 
         # Process the voice file
@@ -130,14 +137,14 @@ async def handle_voice(
         # Delete temp file in the background after response is sent
         background_tasks.add_task(os.unlink, temp_file.name)
 
-        return {
+        return JSONResponse(content={
             "text": transcribed_text,
             "session_id": session_id,
             "response": {
                 "answer": response["answer"],
                 "sources": response["sources"]
             }
-        }
+        })
 
     except Exception as e:
         # Make sure to clean up temp file in case of an error
