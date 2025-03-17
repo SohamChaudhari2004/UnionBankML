@@ -7,11 +7,17 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 MODEL_NAME = "Facenet512"
 
-def save_upload_file(upload_file: UploadFile, folder: str) -> str:
-    file_path = os.path.join(folder, upload_file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(upload_file.file, buffer)
-    return file_path
+# def save_upload_file(upload_file: UploadFile, folder: str) -> str:
+#     file_path = os.path.join(folder, upload_file.filename)
+#     with open(file_path, "wb") as buffer:
+#         shutil.copyfileobj(upload_file.file, buffer)
+#     return file_path
+
+def save_upload_file(upload_file: UploadFile, destination_folder: str) -> str:
+    file_location = os.path.join(destination_folder, upload_file.filename)
+    with open(file_location, "wb") as file:
+        shutil.copyfileobj(upload_file.file, file)
+    return file_location
 
 def verify_faces(file1_path: str, file2_path: str) -> dict:
     try:
@@ -26,7 +32,8 @@ def recognize_face(img_path: str, db_path: str = "database") -> dict:
         return {"matches": dfs[0].to_dict()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
+    
 def get_embedding(img_path: str) -> dict:
     try:
         embeddings = DeepFace.represent(img_path=img_path, model_name=MODEL_NAME)

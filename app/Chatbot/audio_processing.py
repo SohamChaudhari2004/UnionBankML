@@ -17,8 +17,13 @@ verification_model = SpeakerRecognition.from_hparams(
 
 
 # Convert any audio file to WAV (Mono, 16kHz)
-def convert_to_wav(input_file: str, output_file: str = "converted_audioP.wav", target_sample_rate: int = 16000):
+def convert_to_wav(input_file: str, output_file: str = "converted_audio.wav", target_sample_rate: int = 16000) -> str:
     try:
+        # Check if the input file exists
+        if not os.path.exists(input_file):
+            print(f"File not found: {input_file}")
+            return None
+
         # Load the audio file
         audio = AudioSegment.from_file(input_file)
 
