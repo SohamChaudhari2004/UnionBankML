@@ -16,7 +16,7 @@ from typing import Optional
 import imghdr
 import io
 from PIL import Image
-
+import requests
 import uvicorn
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -159,51 +159,72 @@ Please analyze this image and extract the following information in a Json format
 Give me the output in json format.  
 only return json format.
 don't return any other format or text.
-
 """
 
 # List of accepted image formats
 ACCEPTED_IMAGE_FORMATS = ["jpeg", "jpg", "png", "bmp", "gif", "tiff", "webp"]
 
-async def validate_image(file: UploadFile = File(...)) -> UploadFile:
+def validate_image_url(image_url: str):
     """
-    Dependency to validate that the uploaded file is a valid image format.
+    Validate that the Cloudinary URL points to an acceptable image format
     """
-    # Check the file extension
-    ext = os.path.splitext(file.filename)[1].lower().lstrip('.')
-    if ext not in ACCEPTED_IMAGE_FORMATS:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid file format. Accepted formats: {', '.join(ACCEPTED_IMAGE_FORMATS)}"
-        )
+    # Check if the URL has an extension we can verify
+    ext = os.path.splitext(image_url)[1].lower().lstrip('.')
     
-    # Read the file content
-    contents = await file.read()
+    if ext and ext in ACCEPTED_IMAGE_FORMATS:
+        return True
     
-    # Detect the file type from its content
-    file_type = imghdr.what(None, h=contents)
-    
-    # Reset the file pointer for later use
-    await file.seek(0)
-    
-    if not file_type or file_type not in ACCEPTED_IMAGE_FORMATS:
-        raise HTTPException(
-            status_code=400, 
-            detail="The uploaded file is not a valid image."
-        )
-    
-    # Verify image can be opened by PIL
+    # If we can't determine from URL, try to fetch headers
     try:
-        Image.open(io.BytesIO(contents))
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="The uploaded file cannot be processed as an image."
-        )
+        response = requests.head(image_url, timeout=5)
+        content_type = response.headers.get('Content-Type', '')
+        
+        if any(f"image/{fmt}" in content_type for fmt in ACCEPTED_IMAGE_FORMATS):
+            return True
+            
+        # If content type doesn't help, we'll have to download a bit of the image
+        if 'image/' in content_type:
+            return True
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error validating image URL: {str(e)}")
     
-    # Reset the file pointer again
-    await file.seek(0)
-    return file
+    raise HTTPException(
+        status_code=400,
+        detail=f"Cannot verify if URL points to a valid image. Accepted formats: {', '.join(ACCEPTED_IMAGE_FORMATS)}"
+    )
+
+def download_image_from_url(image_url: str):
+    """
+    Download image from Cloudinary URL
+    """
+    try:
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        image_data = response.content
+        
+        # Verify it's a valid image
+        file_type = imghdr.what(None, h=image_data)
+        
+        if not file_type or file_type not in ACCEPTED_IMAGE_FORMATS:
+            raise HTTPException(
+                status_code=400, 
+                detail="The URL does not point to a valid image."
+            )
+        
+        # Verify image can be opened by PIL
+        try:
+            Image.open(io.BytesIO(image_data))
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="The image cannot be processed."
+            )
+            
+        return image_data
+        
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Error downloading image: {str(e)}")
 
 def encode_image_to_base64(image_data):
     """Convert image data to base64 encoding"""
@@ -216,7 +237,7 @@ def process_aadhaar_image(image_data, custom_prompt=None):
         base64_image = encode_image_to_base64(image_data)
         
         # Prepare the prompt
-        prompt = AADHAAR_PROMPT
+        prompt = custom_prompt if custom_prompt else AADHAAR_PROMPT
         
         # Create the message with the image
         messages = [
@@ -246,8 +267,6 @@ def process_aadhaar_image(image_data, custom_prompt=None):
         
         raw_result = completion.choices[0].message.content
         
-        # For simplicity, we're returning the raw result
-        # In a production app, you might want to parse this into structured data
         return {
             "aadhaar_details": raw_result,
             "model": completion.model,
@@ -260,9 +279,29 @@ def process_aadhaar_image(image_data, custom_prompt=None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing Aadhaar: {str(e)}")
 
+@app.post("/aadhaar/process-url/", response_class=JSONResponse)
+async def process_aadhaar_url(image_url: str, custom_prompt: Optional[str] = None):
+    """Endpoint to process an Aadhaar card image from a Cloudinary URL"""
+    try:
+        # Validate the URL points to an acceptable image
+        validate_image_url(image_url)
+        
+        # Download the image
+        image_data = download_image_from_url(image_url)
+        
+        # Process the image
+        result = process_aadhaar_image(image_data, custom_prompt)
+        
+        return result
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error processing image URL: {str(e)}")
+
+# Keep the original file upload endpoint for backward compatibility
 @app.post("/aadhaar/upload/", response_class=JSONResponse)
 async def upload_aadhaar(
-    file: UploadFile = Depends(validate_image), 
+    file: UploadFile = Depends(validate_image_url), 
     custom_prompt: Optional[str] = None
 ):
     """Endpoint to upload an Aadhaar card image and perform OCR"""
