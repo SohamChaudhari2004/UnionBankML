@@ -17,7 +17,7 @@ verification_model = SpeakerRecognition.from_hparams(
 
 
 # Convert any audio file to WAV (Mono, 16kHz)
-def convert_to_wav(input_file: str, output_file: str = "converted_audio.wav", target_sample_rate: int = 16000):
+def convert_to_wav(input_file: str, output_file: str = "converted_audioP.wav", target_sample_rate: int = 16000):
     try:
         # Load the audio file
         audio = AudioSegment.from_file(input_file)
