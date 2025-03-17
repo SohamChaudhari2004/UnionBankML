@@ -23,3 +23,21 @@ retina-face>=0.0.14
 fire>=0.4.0
 gunicorn>=20.1.0
 python-multipart
+speechbrain
+chromadb
+edge-tts
+asyncio
+pydub
+langchain==0.0.314
+langchain-groq==0.0.1
+groq==0.4.1
+sentence-transformers==2.2.2
+aiofiles==23.2.1
+httpx==0.25.0
+beautifulsoup4==4.12.2
+duckduckgo-search==3.9.9
+requests==2.31.0
+openai==1.3.5  # For Whisper API
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1

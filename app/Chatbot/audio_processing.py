@@ -3,6 +3,7 @@ import torchaudio
 import numpy as np
 from pydub import AudioSegment
 from speechbrain.utils.fetching import fetch
+import os
 
 # Set torchaudio backend
 torchaudio.set_audio_backend("soundfile")

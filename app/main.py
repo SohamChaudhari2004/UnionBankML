@@ -29,21 +29,20 @@ async def root():
     return {"message": "DeepFace FastAPI is running!"}
 
 @app.post("/verify/")
-async def verify_route(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+async def verify_image(file1: UploadFile = File(...), file2: UploadFile = File(...)):
     img1_path = save_upload_file(file1, UPLOAD_FOLDER)
     img2_path = save_upload_file(file2, UPLOAD_FOLDER)
     return verify_faces(img1_path, img2_path)
 
 @app.post("/recognize/")
-async def recognize_route(file: UploadFile = File(...), db_path: str = "database"):
+async def recognize_image(file: UploadFile = File(...), db_path: str = "database"):
     img_path = save_upload_file(file, UPLOAD_FOLDER)
     return recognize_face(img_path, db_path)
 
-@app.post("/embed/")
-async def embed_route(file: UploadFile = File(...)):
+@app.post("/embed-image/")
+async def embed_image(file: UploadFile = File(...)):
     img_path = save_upload_file(file, UPLOAD_FOLDER)
     return get_embedding(img_path)
-
 
 
 def delete_file_after_delay(file_path, delay=300):
@@ -54,7 +53,7 @@ def delete_file_after_delay(file_path, delay=300):
         print(f"Deleted file: {file_path}")
 
 @app.post("/extract-embedding/")
-async def extract_embedding_route(file: UploadFile = File(...)):
+async def extract_embedding_from_voice(file: UploadFile = File(...)):
     """
     Extracts and returns the speaker embedding from an uploaded audio file.
     """
@@ -94,8 +93,8 @@ async def extract_embedding_route(file: UploadFile = File(...)):
             os.remove(wav_file_path)
         raise HTTPException(status_code=500, detail=f"Error extracting embedding: {str(e)}")
 
-@app.post("/authenticate/")
-async def verify_user(saved_embedding: list, file: UploadFile = File(...)):
+@app.post("/authenticate-voice/")
+async def verify_user_voice(saved_embedding: list, file: UploadFile = File(...)):
     """
     Compares uploaded audio embedding with a previously saved embedding.
     """
