@@ -85,7 +85,7 @@ async def extract_embedding_from_voice(file: UploadFile = File(...)):
     # Debugging information
     print(f"File saved at: {file_path}")
     print(f"File exists: {os.path.exists(file_path)}")
-
+    
     try:
         # Check if the file exists
         if not os.path.exists(file_path):
@@ -155,7 +155,7 @@ client = Groq(
 AADHAAR_PROMPT = """
 Please analyze this image and extract the following information in a Json format:
 
-1. Mobile No (It should be 10 digits)
+1. Mobile No (It is a 10 digit number only.)
 Give me the output in json format.  
 only return json format.
 don't return any other format or text.
