@@ -401,27 +401,35 @@ async def extract_embedding_from_voice(url: str):
         raise HTTPException(status_code=500, detail=f"Error extracting embedding: {str(e)}")
 
 
+
+class VoiceAuthRequest(BaseModel):
+    saved_audio_url: str
+    input_audio_url: str
+
 @app.post("/authenticatevoice/")
-async def verify_uservoice(saved_audio_url: str, input_audio_url: str):
+async def verify_uservoice(request: VoiceAuthRequest):
     """
     Compares the embeddings from two audio file URLs.
     """
-    saved_audio_path = "saved_audio_file"
-    input_audio_path = "input_audio_file"
+    saved_audio_path = "saved_audio_file.wav"
+    input_audio_path = "input_audio_file.wav"
 
     try:
         # Download the saved audio file
-        response = requests.get(saved_audio_url)
+        response = requests.get(request.saved_audio_url)
         response.raise_for_status()
         with open(saved_audio_path, "wb") as buffer:
             buffer.write(response.content)
 
         # Download the input audio file
-        response = requests.get(input_audio_url)
+        response = requests.get(request.input_audio_url)
         response.raise_for_status()
         with open(input_audio_path, "wb") as buffer:
             buffer.write(response.content)
 
+
+        print(f"Saved audio file saved at: {saved_audio_path}")
+        print(f"Input audio file saved at: {input_audio_path}")
         # Extract embeddings from both audio files
         saved_embedding = extract_embedding(saved_audio_path)
         input_embedding = extract_embedding(input_audio_path)
@@ -431,23 +439,22 @@ async def verify_uservoice(saved_audio_url: str, input_audio_url: str):
 
         # Calculate cosine similarity
         similarity = cosine_similarity([saved_embedding], [input_embedding])[0][0]
-
-        # Convert similarity to a native Python float
-        similarity_float = float(similarity)
+        similarity_float = float(similarity)  # Convert to native float
 
         # Schedule file deletion after 5 minutes
         threading.Thread(target=delete_file_after_delay, args=(saved_audio_path,)).start()
         threading.Thread(target=delete_file_after_delay, args=(input_audio_path,)).start()
 
         return {"similarity": similarity_float}
+
     except Exception as e:
-        # Clean up temp files in case of error
+        # Clean up files in case of error
         if os.path.exists(saved_audio_path):
             os.remove(saved_audio_path)
         if os.path.exists(input_audio_path):
             os.remove(input_audio_path)
         raise HTTPException(status_code=500, detail=f"Error during authentication: {str(e)}")
-
+    
 # -------------------------------------AADHAR OCR--------------------------------------------------------
 client = Groq(
     api_key='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'

@@ -43,7 +43,7 @@
 
 
 
-@app.post("/query_voice_direct")
+# @app.post("/query_voice_direct")
 # async def query_from_voice_direct(
 #     background_tasks: BackgroundTasks,
 #     file_path: str,  # Accept the file path directly

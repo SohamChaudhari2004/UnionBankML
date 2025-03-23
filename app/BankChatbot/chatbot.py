@@ -1,5 +1,20 @@
 """Loan Chatbot implementation."""
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Add CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 import os
 from typing import Dict, Any, List
 
@@ -13,6 +28,7 @@ import chromadb
 from langchain.vectorstores import Chroma
 
 # LLM integration
+from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_groq import ChatGroq
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
@@ -27,6 +43,7 @@ from .config import (
     TEMPERATURE, MAX_TOKENS, CHUNK_SIZE, 
     CHUNK_OVERLAP, RETRIEVAL_K
 )
+
 
 class LoanChatbot:
     """RAG-based loan chatbot with conversation memory."""
